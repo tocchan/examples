@@ -27,3 +27,6 @@
 *.exe
 *.out
 *.app
+common/CreateWindow/Debug/
+*.db
+*.opendb
