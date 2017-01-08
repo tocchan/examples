@@ -30,3 +30,6 @@
 common/CreateWindow/Debug/
 *.db
 *.opendb
+window/displays/Debug/
+*.tlog
+*.idb
