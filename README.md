@@ -23,11 +23,11 @@ Projects are part of lesson tracks and have an intended order to be looked at de
 ### D3D11 
 1. window/create
 2. d3d11/setup
-3. _&lt;IN PROGRESS&gt;_ d3d11/shader_compilation_
+3. _&lt;IN PROGRESS&gt; d3d11/shader_compilation
 
 ### OpenGL
 1. window/create
-2. _&lt;IN PROGRESS&gt; opengl/setup_
+2. _&lt;IN PROGRESS&gt; opengl/setup
 
 ## Project Descriptions
 ###Windows
