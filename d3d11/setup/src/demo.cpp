@@ -42,7 +42,7 @@ void DemoRun();               // Demo setup and update loop
 //
 // I will be swapping things in and out as I add/remove steps.
 //------------------------------------------------------------------------
-#include "demo_old.inl"
+#include "demo.inl"
 
 //------------------------------------------------------------------------
 // WINDOW STUFF

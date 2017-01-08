@@ -157,7 +157,7 @@
     <ClInclude Include="src\window.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="src\demo_old.inl" />
+    <None Include="src\demo.inl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
