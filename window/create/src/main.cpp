@@ -6,11 +6,6 @@
 
 
 //------------------------------------------------------------------------
-// Used for this demo
-static bool gQuitPressed = false;
-
-
-//------------------------------------------------------------------------
 // Platform Specific Entrance Point
 // Like "main", but for Windows Applications
 int WINAPI WinMain( HINSTANCE instance, 
