@@ -31,12 +31,24 @@ static LRESULT CALLBACK GameWndProc( HWND hwnd,
    WPARAM wparam, 
    LPARAM lparam )
 {
+   // Get data assocated with this window;
+   // void *user_data = (void*) GetWindowLongPtr( hwnd, GWLP_USERDATA );
+
    switch (msg) {
       //------------------------------------------------------------------------
       // IMPORTANT/COMMON
       //------------------------------------------------------------------------
       case WM_CREATE: {
          // Window creation happened.
+
+         // Grabbing the user data passed with WindowCreate
+         /*
+            CREATESTRUCT *cp = (CREATESTRUCT*) lparam;
+            wnd = (Window*) cp->lpCreateParams;
+
+            wnd->hwnd = hwnd;
+            SetWindowLongPtr( hwnd, GWLP_USERDATA, (LONG_PTR) wnd );
+         */
       } break;
 
       case WM_SHOWWINDOW: {
@@ -266,7 +278,7 @@ HWND CreateTheWindow( char const *title, int x, int y, int res_x, int res_y )
       NULL,                                     // my parent (not used in this example)
       NULL,                                     // my menu (not used in this example)
       GetCurrentHINSTANCE(),                    // hinstance this window belongs too
-      nullptr );                                // user data associated with this window (good place to store a pointer to a window object if you class'ify this)
+      nullptr );                                // passed as lParam in WM_CREATE message (good place to store a pointer to a window object if you class'ify this)
 
    if (NULL == hwnd)   {
       DWORD error = GetLastError();

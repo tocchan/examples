@@ -33,3 +33,7 @@ common/CreateWindow/Debug/
 window/displays/Debug/
 *.tlog
 *.idb
+d3d11/setup/x64/
+window/create/x64/
+window/displays/x64/
+x64/
