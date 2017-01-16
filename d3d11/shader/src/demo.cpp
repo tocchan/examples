@@ -105,7 +105,7 @@ ID3DBlob* CompileHLSLToShaderBlob( char const *opt_filename,         // optional
    char const* target );                                             // What stage we're compiling for (Vertex/Fragment/Hull/Compute... etc...)
 
 void CreateInputLayout( ID3DBlob *vs_bytecode );
-ID3D11Buffer* CreateVertexBuffer( vertex_t const *vertices, uint const count );
+bool CreateVertexBuffer();
 
 
 void DemoRender();            // Does rendering for this demo
@@ -342,7 +342,7 @@ bool CreateVertexBuffer()
 void ClearScreen()
 {
    // Clear the buffer.
-   float clear_color[4] = { 0.004f, 0.475f, 0.435f, 1.0f };
+   float clear_color[4] = { 0.80f, 0.25f, 0.0f, 1.0f };
    gD3DContext->ClearRenderTargetView( gD3DRenderTargetView, clear_color );
 }
 
@@ -398,9 +398,9 @@ void DemoRender()
    // 4.   Topology Type - the data in the Vertex Buffer/Index Buffer describes what kind of shapes.  
    //      In thish class - I only deal with POINTS, LINES, and TRIANGLES.
    gD3DContext->IASetPrimitiveTopology( D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST );
-
+    
    // Now that everything is bound, we can draw!
-   gD3DContext->Draw( 0, 6 );                      // I'm drawing two triangles, 3 points each, so 6 vertices total.  Starting at index 0.
+   gD3DContext->Draw( 0, 3 );                      // I'm drawing one triangle, so 3 vertices total.  Starting at index 0.
 
 
    // We're done rendering, so tell the swap chain they can copy the back buffer to the front (desktop/window) buffer
@@ -422,7 +422,7 @@ void DemoRun()
    
    //=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
    CreateBackBufferView(); // can be part of setup
-   CreateShaders( "nop_color.hlsl" );
+   CreateShaders( "hlsl/nop_color.hlsl" );
    CreateVertexBuffer();
 
    // While this window is open, process messages, and do other game processing
