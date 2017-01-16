@@ -159,11 +159,13 @@ void* FileReadToBuffer( char const *filename, size_t *out_size )
       return nullptr;
    }
    
-   // Figure out the file size (honestly could ignore the high word, no hlsl file is 
-   // going to be > 4GB).
+   // Get File Size
    DWORD high_word;
    DWORD lo_word = ::GetFileSize( file_handle, &high_word );
-   size_t size = ((size_t)high_word << 32) | (size_t)lo_word;
+   
+   // 64-bit way - use a 64-bit type, but we will never have a 4GB+ file, so ignore it and just using lo-word to prevent warnings
+   // size_t size = ((size_t)high_word << 32) | (size_t)lo_word;
+   size_t size = (size_t)lo_word;
 
    // Make a buffer that big
    void *buffer = malloc(size + 1U); // I allocae one extra for a null terminator - but do not include it in the size

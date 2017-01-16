@@ -36,3 +36,5 @@ window/displays/Debug/
 window/displays/x64/
 *.pdb
 x64/
+d3d11/setup/Debug/
+Debug/
