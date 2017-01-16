@@ -400,7 +400,7 @@ void DemoRender()
    gD3DContext->IASetPrimitiveTopology( D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST );
     
    // Now that everything is bound, we can draw!
-   gD3DContext->Draw( 0, 3 );                      // I'm drawing one triangle, so 3 vertices total.  Starting at index 0.
+   gD3DContext->Draw( 3, 0 );                      // I'm drawing one triangle, so 3 vertices total.  Starting at index 0.
 
 
    // We're done rendering, so tell the swap chain they can copy the back buffer to the front (desktop/window) buffer
