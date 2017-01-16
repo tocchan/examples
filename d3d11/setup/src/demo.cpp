@@ -11,7 +11,6 @@
 #define WINDOW_RES_X    (1280)
 #define WINDOW_RES_Y    (720)
 
-// Debug Build for Rendering
 #define RENDER_DEBUG
 
 typedef unsigned int uint;
@@ -69,7 +68,7 @@ void WindowDestroy()
 //------------------------------------------------------------------------
 bool WindowIsOpen() 
 {
-   return (bool) ::IsWindow(gHWND);
+   return ::IsWindow(gHWND) == TRUE;
 }
 
 //------------------------------------------------------------------------

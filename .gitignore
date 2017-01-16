@@ -33,3 +33,6 @@ common/CreateWindow/Debug/
 window/displays/Debug/
 *.tlog
 *.idb
+window/displays/x64/
+*.pdb
+x64/
