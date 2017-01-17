@@ -34,6 +34,7 @@ Projects are part of lesson tracks and have an intended order to be looked at de
 ## Project Descriptions
 ###Windows
 - __window/create__: Creates a simple fixed sized window. 
+- __window/displays__: Example how to get desktop resolution using Win32 API
 
 ###D3D11
 - __d3d11/setup__: Initialize D3D11 and be able to clear the screen.
