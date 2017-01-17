@@ -1,14 +1,15 @@
+#Window Creation
 
-== SETUP == 
-Solution was a new Empty Win32 Solution.
+![Preview Image](https://github.com/tocchan/guildhall_samples/blob/master/images/window_create.png "Example Image")
 
-Pulled in log.h, log.cpp from ../common/util
+##Setup
+Solution was a new Empty Win32 Solution created in Visual Studio 2015.
+Pulled in log.h, log.cpp from ../common/util for basic support for printing to the Output Window
 
 
-Project Property Chagnes;
+##Project Property Chagnes;
 - "General -> Project Defaults -> CharacterSet" was changed to "Use Multi-Byte Character Set"
 
 
-== NOTES == 
-
+##Notes
 - I have a hardcoded "Destroy this window when Escape is pressed" inside the windows proc.  Remove this after cleanup.
