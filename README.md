@@ -10,7 +10,7 @@ Each project is self contained and does not rely on any other project.  All proj
 A most projects will contain the following files;
 - __main.cpp__: Entry point for the program.  Basic setup and then calls DemoRun();
 - __demo.cpp__: Contains code most relevant to the lesson.  
-- __demo.inl__: Old code thta is part of demo.cpp, but not related to the task.  Moved here to keep demo.cpp as short as possible.
+- __demo.inl__: Old code thaa is part of demo.cpp, but not related to the task.  Moved here to keep demo.cpp as short as possible.
 
 Projects are categorized under folders that most relate to what they accomplish.  
 - __windows__: Win32 API Examples
@@ -23,7 +23,9 @@ Projects are part of lesson tracks and have an intended order to be looked at de
 ### D3D11 
 1. window/create
 2. d3d11/setup
-3. _&lt;IN PROGRESS&gt; d3d11/shader_compilation_
+3. d3d11/shader
+4. d3d11/texture
+3. _&lt;IN PROGRESS&gt; d3d11/constants_
 
 ### OpenGL
 1. window/create
@@ -35,3 +37,5 @@ Projects are part of lesson tracks and have an intended order to be looked at de
 
 ###D3D11
 - __d3d11/setup__: Initialize D3D11 and be able to clear the screen.
+- __d3d11/shader__:  Shader Compilation and Linking, and Vertex Buffers
+- __d3d11/texture__:  Textures, Samplers, and Index Buffers.
