@@ -21,22 +21,22 @@ Projects are categorized under folders that most relate to what they accomplish.
 Projects are part of lesson tracks and have an intended order to be looked at depending on what you 
 
 ### D3D11 
-1. window/create
-2. d3d11/setup
-3. d3d11/shader
-4. d3d11/texture
+1. [window/create](https://github.com/tocchan/guildhall_samples/tree/master/window/create)
+2. [d3d11/setup](https://github.com/tocchan/guildhall_samples/tree/master/d3d11/setup)
+3. [d3d11/shader](https://github.com/tocchan/guildhall_samples/tree/master/d3d11/shader)
+4. [d3d11/texture](https://github.com/tocchan/guildhall_samples/tree/master/d3d11/texture)
 3. _&lt;IN PROGRESS&gt; d3d11/constants_
 
 ### OpenGL
-1. window/create
+1. [window/create](https://github.com/tocchan/guildhall_samples/tree/master/window/create)
 2. _&lt;IN PROGRESS&gt; opengl/setup_
 
 ## Project Descriptions
 ###Windows
-- __window/create__: Creates a simple fixed sized window. 
-- __window/displays__: Example how to get desktop resolution using Win32 API
+- [__window/create__](https://github.com/tocchan/guildhall_samples/tree/master/window/create): Creates a simple fixed sized window. 
+- [__window/displays__](https://github.com/tocchan/guildhall_samples/tree/master/window/displays): Example how to get desktop resolution using Win32 API
 
 ###D3D11
-- __d3d11/setup__: Initialize D3D11 and be able to clear the screen.
-- __d3d11/shader__:  Shader Compilation and Linking, and Vertex Buffers
-- __d3d11/texture__:  Textures, Samplers, and Index Buffers.
+- [__d3d11/setup__](https://github.com/tocchan/guildhall_samples/tree/master/d3d11/setup): Initialize D3D11 and be able to clear the screen.
+- [__d3d11/shader__](https://github.com/tocchan/guildhall_samples/tree/master/d3d11/shader):  Shader Compilation and Linking, and Vertex Buffers
+- [__d3d11/texture__](https://github.com/tocchan/guildhall_samples/tree/master/d3d11/texture):  Textures, Samplers, and Index Buffers.
