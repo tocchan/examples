@@ -209,6 +209,6 @@ void CreateShaders( char const *filename )
 void ClearScreen()
 {
    // Clear the buffer.
-   float clear_color[4] = { 0.80f, 0.25f, 0.0f, 1.0f };
+   float clear_color[4] = { 0.00f, 0.05f, 0.40f, 1.0f };
    gD3DContext->ClearRenderTargetView( gD3DRenderTargetView, clear_color );
 }
