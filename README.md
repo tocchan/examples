@@ -1,4 +1,4 @@
-# Guildhall Examples
+# Examples
 Repository contains bare-bones examples of API specific operations (Win32, D3D11, WinSock, etc...).  These are not code pieces you should just throw into your own project - but just the minimal (readable) amount of code required to accomplish that specific action.
 
 ## Compilation Notes
