@@ -7,6 +7,7 @@
 #include "src/common.h"
 #include "src/time.h"
 #include "src/memory.h"
+#include "src/memory_demo.h"
 
 #include "src/profile.h"
 
@@ -42,27 +43,8 @@ int SpeedTest1( uint const iterations )
 //--------------------------------------------------------------------
 int main( int argc, char const *argv[] ) 
 {
-   int result0;
-   int result1;
-   uint const iterations = 1000000;
-
-   MemTest();
-
-   // printf( "Enter Iterations: " );
-   // scanf( "%u", &iterations );
-
-   {
-      PROFILE_LOG_SCOPE("SpeedTest0"); 
-      result0 = SpeedTest0( iterations );
-   }
-
-   {
-      PROFILE_LOG_SCOPE("SpeedTest1"); 
-      result1 = SpeedTest1( iterations );
-   }
-
-   printf( "Results: %i == %i\n", result0, result1 );
-
+   MemoryDemo();
+   
    pause();
    return 0;
 }
