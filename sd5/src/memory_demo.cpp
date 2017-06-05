@@ -11,6 +11,8 @@
 #include <malloc.h>
 #include <string>
 
+#include "callstack.h"
+
 /************************************************************************/
 /*                                                                      */
 /* DEFINES AND CONSTANTS                                                */
@@ -187,23 +189,25 @@ void HookFunction( void *original, void *new_function )
 
    VirtualProtect( original, 6, PAGE_EXECUTE_READWRITE, &old );
 
-   DWORD offset = ((DWORD)new_function - (DWORD)original) - 5;
+   DWORD offset = (DWORD)(((byte_t*)new_function - (byte_t*)original) - 5);
    byte_t *code = (byte_t*)original;
 
    code[0] = 0xe9;
    memcpy( code + 1, &offset, sizeof(DWORD) );
 
-   for (uint i = 5; i < len; ++i) {
+   for (int i = 5; i < len; ++i) {
       *(code + i) = 0x90; // NOP == No OPeration
    }
 
    VirtualProtect( original, 6, old, &unused );
 }
 
+
 //------------------------------------------------------------------------
 void MemoryDemo()
 {
    SomethingAwesome();
+   CallstackDemo();
 
    int value = 10;
    value = AddConstant( value );
@@ -212,6 +216,8 @@ void MemoryDemo()
    value = AddConstant( value );
 
    printf( "Value: %u\n", value );
+
+
 }
 
 

@@ -81,4 +81,5 @@ void DestroyCallstack( Callstack *c );
 
 uint CallstackGetLines( callstack_line_t *line_buffer, uint const max_lines, Callstack *cs );
 
+void CallstackDemo();
 

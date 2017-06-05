@@ -222,11 +222,35 @@ uint CallstackGetLines( callstack_line_t *line_buffer, uint const max_lines, Cal
    return idx;
 }
 
-void CallstackExample()
-{
-   // create a callstack, skip no frames (so CallstackExample should exist in the returned callstack)
-   Callstack *cs = CreateCallstack( 0 );
 
-   // cleanup
-   DestroyCallstack( cs );
+//------------------------------------------------------------------------
+void CallstackDemo()
+{
+   // do one at system startup
+   CallstackSystemInit();
+   
+
+   // Creating a callstack - created at allocation time
+   Callstack *cs = CreateCallstack(0);
+
+   // Printing a callstack, happens when making report
+   char line_buffer[512];
+   callstack_line_t lines[128];
+   uint line_count = CallstackGetLines( lines, 128, cs );
+   for (uint i = 0; i < line_count; ++i) {
+      // this specific format will make it double clickable in an output window 
+      // taking you to the offending line.
+      sprintf_s( line_buffer, 512, "%s(%u): %s\n", 
+         lines[i].filename, lines[i].line, lines[i].function_name ); 
+
+      // print to output and console
+      OutputDebugStringA( line_buffer );
+      printf( line_buffer );
+   }
+
+   // clean up - happens on free
+   DestroyCallstack(cs);
+
+   // do at system shutdown.
+   CallstackSystemDeinit();
 }
