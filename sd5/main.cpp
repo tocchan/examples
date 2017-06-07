@@ -8,6 +8,7 @@
 #include "src/time.h"
 #include "src/memory.h"
 #include "src/memory_demo.h"
+#include "src/thread.h"
 
 #include "src/profile.h"
 
@@ -44,6 +45,7 @@ int SpeedTest1( uint const iterations )
 int main( int argc, char const *argv[] ) 
 {
    MemoryDemo();
+   ThreadDemo();
    
    pause();
    return 0;
