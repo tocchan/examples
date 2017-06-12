@@ -9,6 +9,7 @@
 #include "src/memory.h"
 #include "src/memory_demo.h"
 #include "src/thread.h"
+#include "src/signal.h"
 
 #include "src/profile.h"
 
@@ -44,9 +45,13 @@ int SpeedTest1( uint const iterations )
 //--------------------------------------------------------------------
 int main( int argc, char const *argv[] ) 
 {
-   MemoryDemo();
-   ThreadDemo();
+   // MemoryDemo();
+   // pause();
    
+   SignalTest();
+   pause();
+
+   ThreadDemo();
    pause();
    return 0;
 }

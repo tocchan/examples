@@ -127,9 +127,11 @@ void ThreadJoin( thread_handle_t th )
 
 
 //------------------------------------------------------------------------
-// EXAMPLE CODE
+// EXAMPLE CODE : LOGGER
 //------------------------------------------------------------------------
 #include "ts_queue.h"
+#include "signal.h"
+
 
 ThreadSafeQueue<std::string> gMessages;
 
