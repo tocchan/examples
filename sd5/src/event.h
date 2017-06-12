@@ -1,21 +1,24 @@
 #pragma once
 
+// Equivalent of a C# Delegate
+
 /************************************************************************/
 /*                                                                      */
 /* INCLUDE                                                              */
 /*                                                                      */
 /************************************************************************/
 #include "common.h"
+#include "criticalsection.h"
 
-#define WIN32_LEAN_AND_MEAN
-#include <Windows.h>
+#include <queue>
+
 
 /************************************************************************/
 /*                                                                      */
 /* DEFINES AND CONSTANTS                                                */
 /*                                                                      */
 /************************************************************************/
-#define INVALID_THREAD_HANDLE 0
+// Infoknowledge Management System
 
 /************************************************************************/
 /*                                                                      */
@@ -28,8 +31,6 @@
 /* TYPES                                                                */
 /*                                                                      */
 /************************************************************************/
-typedef void* thread_handle_t;
-typedef void (*thread_cb)( void* );
 
 /************************************************************************/
 /*                                                                      */
@@ -55,15 +56,4 @@ typedef void (*thread_cb)( void* );
 /*                                                                      */
 /************************************************************************/
 
-// Creates a thread with the entry point of cb, passed data
-thread_handle_t ThreadCreate( thread_cb cb, void *data );
-
-void ThreadSleep( uint ms );
-
-// Releases my hold on this thread [one of these MUST be called per create]
-void ThreadDetach( thread_handle_t th );
-void ThreadJoin( thread_handle_t th );
-
-// Demonstration Code
-void ThreadDemo();
 

@@ -31,6 +31,11 @@
 /* STRUCTS                                                              */
 /*                                                                      */
 /************************************************************************/
+struct thread_pass_data_t
+{
+   thread_cb cb;
+   void *arg;
+};
 
 /************************************************************************/
 /*                                                                      */
@@ -56,18 +61,6 @@
 /*                                                                      */
 /************************************************************************/
 
-/************************************************************************/
-/*                                                                      */
-/* EXTERNAL FUNCTIONS                                                   */
-/*                                                                      */
-/************************************************************************/
-
-struct thread_pass_data_t
-{
-   thread_cb cb;
-   void *arg;
-};
-
 //------------------------------------------------------------------------
 static DWORD WINAPI ThreadEntryPointCommon( void *arg ) 
 {
@@ -77,6 +70,12 @@ static DWORD WINAPI ThreadEntryPointCommon( void *arg )
    delete pass_ptr;
    return 0;
 }
+
+/************************************************************************/
+/*                                                                      */
+/* EXTERNAL FUNCTIONS                                                   */
+/*                                                                      */
+/************************************************************************/
 
 //------------------------------------------------------------------------
 // Creates a thread with the entry point of cb, passed data
@@ -128,66 +127,81 @@ void ThreadJoin( thread_handle_t th )
 
 
 //------------------------------------------------------------------------
-void GenerateGarbageWork( void *data ) 
-{
-   for (uint i = 0; i < 1000; ++i) {
-      printf( "Garbage Thread: %i\n", i );
-   }
-}
-
+// EXAMPLE CODE
 //------------------------------------------------------------------------
-//------------------------------------------------------------------------
-void GenerateGarbage( char const *filename, size_t byte_count ) 
-{
-   thread_handle_t th = ThreadCreate( GenerateGarbageWork, nullptr );
-   ThreadJoin( th );
-}
+#include "ts_queue.h"
 
-#include <queue>
 ThreadSafeQueue<std::string> gMessages;
+
+thread_handle_t gLoggerThread = nullptr;
 bool gLoggerThreadRunning = true;
 
+//------------------------------------------------------------------------
+uint FlushMessages( FILE *fh )
+{
+   uint count = 0;
+   std::string msg;
+
+   while (gMessages.pop(&msg)) {
+      fprintf( fh, "%s\n", msg.c_str() );
+      ++count;
+   }
+
+   return count;
+}
+
+//------------------------------------------------------------------------
 void LoggerThread( void* )
 {
-   FILE *fh = fopen( "log.log", "w+" );
-   if (nullptr == fh) {
+   FILE *fh = nullptr;
+   errno_t err = fopen_s( &fh, "log.log", "w+" );
+   if ((err != 0) || (fh == nullptr)) {
       return; 
    }
 
-   std::string msg;
    while (gLoggerThreadRunning) {
-      if (gMessages.pop(&msg)) {
-         fprintf( fh, "%s\n", msg.c_str() );
-      }
+      FlushMessages(fh);
+      ThreadSleep(10);
    }
 
+   FlushMessages(fh);
    fclose(fh);
 }
 
+//------------------------------------------------------------------------
 void LogPrint( char const *msg ) 
 {
    gMessages.push( msg );
 }
 
 //------------------------------------------------------------------------
+void LogStartup()
+{
+   gLoggerThreadRunning = true;
+   gLoggerThread = ThreadCreate( LoggerThread, nullptr );
+}
+
+//------------------------------------------------------------------------
+void LogShutdown()
+{
+   gLoggerThreadRunning = false;
+   ThreadJoin( gLoggerThread );
+   gLoggerThread = INVALID_THREAD_HANDLE;
+
+}
+
+//------------------------------------------------------------------------
 void ThreadDemo()
 {
    // GenerateGarbage( "garbage.dat", 50 * 1024 * 1024 );
-
-
-   thread_handle_t th = ThreadCreate( LoggerThread, nullptr );
+   LogStartup();
    
    for (uint i = 0; i < 1000; ++i) {
-      LogPrint( "Hello" );
-      LogPrint( "Goodbye" );
-      LogPrint( "Do we need more stuff?" );
+      LogPrint( "Main Thread!" );
+      ThreadSleep(100);
    }
 
-   ThreadJoin( th );
-
-   for (uint i = 0; i < 10; ++i) {
-      printf( "Main Thread: %i\n", i );
-   }
+   LogShutdown();
 }
 
 /************************************************************************/

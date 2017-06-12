@@ -6,16 +6,17 @@
 /*                                                                      */
 /************************************************************************/
 #include "common.h"
+#include "criticalsection.h"
 
-#define WIN32_LEAN_AND_MEAN
-#include <Windows.h>
+#include <queue>
+
 
 /************************************************************************/
 /*                                                                      */
 /* DEFINES AND CONSTANTS                                                */
 /*                                                                      */
 /************************************************************************/
-#define INVALID_THREAD_HANDLE 0
+// Infoknowledge Management System
 
 /************************************************************************/
 /*                                                                      */
@@ -28,8 +29,6 @@
 /* TYPES                                                                */
 /*                                                                      */
 /************************************************************************/
-typedef void* thread_handle_t;
-typedef void (*thread_cb)( void* );
 
 /************************************************************************/
 /*                                                                      */
@@ -43,6 +42,62 @@ typedef void (*thread_cb)( void* );
 /*                                                                      */
 /************************************************************************/
 
+//------------------------------------------------------------------------
+template <typename T>
+class ThreadSafeQueue
+{
+   public:
+      //------------------------------------------------------------------------
+      ~ThreadSafeQueue()
+      {
+         int a = 10;
+         a = a;
+      }
+
+      //------------------------------------------------------------------------
+      void push( T const &v ) 
+      {
+         SCOPE_LOCK(m_lock);
+         m_queue.push( v );
+      }
+
+      //------------------------------------------------------------------------
+      bool empty() 
+      {
+         SCOPE_LOCK(m_lock);
+         bool result = m_queue.empty();
+
+         return result;
+      }
+
+      //------------------------------------------------------------------------
+      bool pop( T *out )
+      {
+         SCOPE_LOCK(m_lock);
+
+         if (m_queue.empty()) {
+            return false; 
+         } else {
+            *out = m_queue.front();
+            m_queue.pop();
+            return true;
+         }
+      }
+
+      //------------------------------------------------------------------------
+      T front() 
+      {
+         SCOPE_LOCK(m_lock);
+         T result = m_queue.front(); 
+
+         return result;
+      }
+
+   public:
+      std::queue<T> m_queue;
+      CriticalSection m_lock;
+};
+
 /************************************************************************/
 /*                                                                      */
 /* GLOBAL VARIABLES                                                     */
@@ -55,15 +110,4 @@ typedef void (*thread_cb)( void* );
 /*                                                                      */
 /************************************************************************/
 
-// Creates a thread with the entry point of cb, passed data
-thread_handle_t ThreadCreate( thread_cb cb, void *data );
-
-void ThreadSleep( uint ms );
-
-// Releases my hold on this thread [one of these MUST be called per create]
-void ThreadDetach( thread_handle_t th );
-void ThreadJoin( thread_handle_t th );
-
-// Demonstration Code
-void ThreadDemo();
 

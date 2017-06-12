@@ -70,6 +70,7 @@ struct allocation_t
    size_t byte_size;
 };
 
+/*
 void* operator new( size_t const size ) 
 {
    ++gAllocCount;
@@ -93,7 +94,7 @@ void operator delete( void *ptr )
    gAllocatedByteCount -= size_ptr->byte_size;
    free( size_ptr );
 }
-
+*/
 
 class Foo
 {

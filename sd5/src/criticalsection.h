@@ -15,7 +15,7 @@
 /* DEFINES AND CONSTANTS                                                */
 /*                                                                      */
 /************************************************************************/
-#define INVALID_THREAD_HANDLE 0
+// Infoknowledge Management System
 
 /************************************************************************/
 /*                                                                      */
@@ -23,13 +23,14 @@
 /*                                                                      */
 /************************************************************************/
 
+// creates a scoped critical section object named __lock_<LINE#>( &cs )
+#define SCOPE_LOCK( cs ) ScopeCriticalSection COMBINE(___lock_,__LINE__)(&cs)
+
 /************************************************************************/
 /*                                                                      */
 /* TYPES                                                                */
 /*                                                                      */
 /************************************************************************/
-typedef void* thread_handle_t;
-typedef void (*thread_cb)( void* );
 
 /************************************************************************/
 /*                                                                      */
@@ -43,6 +44,42 @@ typedef void (*thread_cb)( void* );
 /*                                                                      */
 /************************************************************************/
 
+//------------------------------------------------------------------------
+//------------------------------------------------------------------------
+// Mutual Exclusive [mutex]: 
+// Fair:  Serviced in order of request.
+// Recursive: Someone is allowed to lock multiple times.
+class CriticalSection 
+{
+   public:
+      CriticalSection();
+      ~CriticalSection();
+
+      // Enteres the lock - only one thread is allowed to be inside this lock at a time, every
+      // other caller will block on this call until they're allowed to enter.
+      void lock();
+
+      // Tries to enter the lock - returns TRUE if the lock was entered, false if it failed.
+      bool try_lock();
+
+      // Leave the lock - allowing the next person to lock to be able to enter.
+      void unlock();
+
+   public: 
+      CRITICAL_SECTION cs;
+};
+
+//------------------------------------------------------------------------
+class ScopeCriticalSection
+{
+   public:
+      ScopeCriticalSection( CriticalSection *ptr );
+      ~ScopeCriticalSection();
+
+   public:
+      CriticalSection *cs_ptr;
+};
+
 /************************************************************************/
 /*                                                                      */
 /* GLOBAL VARIABLES                                                     */
@@ -54,16 +91,3 @@ typedef void (*thread_cb)( void* );
 /* FUNCTION PROTOTYPES                                                  */
 /*                                                                      */
 /************************************************************************/
-
-// Creates a thread with the entry point of cb, passed data
-thread_handle_t ThreadCreate( thread_cb cb, void *data );
-
-void ThreadSleep( uint ms );
-
-// Releases my hold on this thread [one of these MUST be called per create]
-void ThreadDetach( thread_handle_t th );
-void ThreadJoin( thread_handle_t th );
-
-// Demonstration Code
-void ThreadDemo();
-

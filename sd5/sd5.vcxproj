@@ -145,20 +145,28 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="src\callstack.cpp" />
     <ClCompile Include="src\common.cpp" />
+    <ClCompile Include="src\criticalsection.cpp" />
+    <ClCompile Include="src\event.cpp" />
     <ClCompile Include="src\memory.cpp" />
     <ClCompile Include="src\memory_demo.cpp" />
     <ClCompile Include="src\profile.cpp" />
+    <ClCompile Include="src\signal.cpp" />
     <ClCompile Include="src\thread.cpp" />
     <ClCompile Include="src\time.cpp" />
+    <ClCompile Include="src\ts_queue.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\callstack.h" />
     <ClInclude Include="src\common.h" />
+    <ClInclude Include="src\criticalsection.h" />
+    <ClInclude Include="src\event.h" />
     <ClInclude Include="src\memory.h" />
     <ClInclude Include="src\memory_demo.h" />
     <ClInclude Include="src\profile.h" />
+    <ClInclude Include="src\signal.h" />
     <ClInclude Include="src\thread.h" />
     <ClInclude Include="src\time.h" />
+    <ClInclude Include="src\ts_queue.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
