@@ -63,7 +63,7 @@
 Signal::Signal()
 {
    os_event = ::CreateEvent( nullptr, // security attributes, not needed
-      TRUE,                           // Manual reset - do we manually reset, or auto reset after this is hit.
+      FALSE,                           // Manual reset - do we manually reset, or auto reset after this is hit.
       FALSE,                          // initial state of the signal
       NULL );                         // name, used for cross-process communication
 }
@@ -99,9 +99,9 @@ void Signal::wait()
 
 
 //------------------------------------------------------------------------
-bool Signal::wait_for( uint sm ) 
+bool Signal::wait_for( uint ms ) 
 {
-   DWORD result = ::WaitForSingleObject( os_event, INFINITE );
+   DWORD result = ::WaitForSingleObject( os_event, ms );
    if (result == WAIT_OBJECT_0) {
       // great, we succeeded!  [you can wait for multiple objects,
       // hence the WAIT_OBJECT_0 - meaning our the first object was

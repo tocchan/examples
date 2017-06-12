@@ -131,12 +131,15 @@ void ThreadJoin( thread_handle_t th )
 //------------------------------------------------------------------------
 #include "ts_queue.h"
 #include "signal.h"
+#include "event.h"
 
 
 ThreadSafeQueue<std::string> gMessages;
 
 thread_handle_t gLoggerThread = nullptr;
 bool gLoggerThreadRunning = true;
+Signal gLogSignal; 
+EventV0 gLogEvent; 
 
 //------------------------------------------------------------------------
 uint FlushMessages( FILE *fh )
@@ -145,12 +148,30 @@ uint FlushMessages( FILE *fh )
    std::string msg;
 
    while (gMessages.pop(&msg)) {
-      fprintf( fh, "%s\n", msg.c_str() );
+      gLogEvent.trigger( &msg );
       ++count;
    }
 
    return count;
 }
+
+//------------------------------------------------------------------------
+void LogWriteToFile( void *user_arg, void *event_arg ) 
+{
+   FILE *fh = (FILE*) user_arg;
+   std::string *msg = (std::string*)event_arg;
+
+   fprintf( fh, "%s\n", msg->c_str() ); 
+}
+
+//------------------------------------------------------------------------
+void LogWriteToDebugger( void *user_arg, void *event_arg )
+{
+   std::string *msg = (std::string*)event_arg;
+   OutputDebugStringA( msg->c_str() );
+   OutputDebugStringA( "\n" );
+}
+
 
 //------------------------------------------------------------------------
 void LoggerThread( void* )
@@ -161,9 +182,11 @@ void LoggerThread( void* )
       return; 
    }
 
+   gLogEvent.subscribe( fh, LogWriteToFile );
+
    while (gLoggerThreadRunning) {
+      gLogSignal.wait();
       FlushMessages(fh);
-      ThreadSleep(10);
    }
 
    FlushMessages(fh);
@@ -174,6 +197,7 @@ void LoggerThread( void* )
 void LogPrint( char const *msg ) 
 {
    gMessages.push( msg );
+   gLogSignal.signal_all();
 }
 
 //------------------------------------------------------------------------
@@ -187,20 +211,24 @@ void LogStartup()
 void LogShutdown()
 {
    gLoggerThreadRunning = false;
+   gLogSignal.signal_all();
    ThreadJoin( gLoggerThread );
    gLoggerThread = INVALID_THREAD_HANDLE;
 
 }
+
 
 //------------------------------------------------------------------------
 void ThreadDemo()
 {
    // GenerateGarbage( "garbage.dat", 50 * 1024 * 1024 );
    LogStartup();
+
+   gLogEvent.subscribe( nullptr, LogWriteToDebugger );
    
    for (uint i = 0; i < 1000; ++i) {
       LogPrint( "Main Thread!" );
-      ThreadSleep(100);
+      ThreadSleep(10);
    }
 
    LogShutdown();
