@@ -117,10 +117,66 @@ class EventV0
 //--------------------------------------------------------------------
 // EVENT VERSION 1
 // - Thread Safety around 
-// - Add support for callbacks without user data
-// - Adds supports for methods
+// Variadic Templates
 //--------------------------------------------------------------------
-// TODO
+template <typename ...ARGS>
+class EventV1
+{
+   typedef void (*cb_t)( void*, ARGS... );
+   // subscription - when subscribing this is the identifying 
+   // information (what to call, and what to call with)
+   struct event_sub_t 
+   {
+      cb_t cb;
+      void *user_arg;
+   };
+
+   public:
+      EventV1()
+      {
+      }
+
+      ~EventV1()
+      {
+         subscriptions.clear();
+      }
+
+      void subscribe( void *user_arg, cb_t cb ) 
+      {
+         // Good safeguard in debug to add is to make sure
+         // you're not double subscribing to an event
+         // with a similar pair. 
+         // TODO - ASSERT AGAINST ABOVE
+
+         // Add subscriptoin
+         event_sub_t sub;
+         sub.cb = cb;
+         sub.user_arg = user_arg;
+         subscriptions.push_back( sub );
+      }
+
+      void unsubscribe( void *user_arg, cb_t cb ) 
+      {
+         for (int i = 0; i < subscriptions.size(); ++i) {
+            event_sub_t &sub = subscriptions[i];
+            if ((sub.cb == cb) && (sub.user_arg == user_arg)) {
+               subscriptions.erase( subscriptions.begin() + i );
+               return; // should be unique, so return immeidately
+            }
+         }
+      }
+
+      void trigger( ARGS ...args )
+      {
+         for (int i = 0; i < subscriptions.size(); ++i) {
+            event_sub_t &sub = subscriptions[i];
+            sub.cb( sub.user_arg, args... );
+         }
+      }
+
+   public:
+      std::vector<event_sub_t> subscriptions;
+};
 
 //--------------------------------------------------------------------
 // EVENT VERSION 2
