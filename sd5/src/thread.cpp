@@ -31,6 +31,21 @@
 /* STRUCTS                                                              */
 /*                                                                      */
 /************************************************************************/
+//------------------------------------------------------------------------
+// Struct used to pass a name for the attached debugger
+#define MS_VC_EXCEPTION      (0x406d1388)
+
+#pragma pack(push, 8)
+   struct THREADNAME_INFO
+   {
+      DWORD type;            // must be 0x1000
+      const char *name;      // name
+      DWORD thread_id;      // -1 for calling thread
+      DWORD flags;         // must be 0, reserved for future use
+   };
+#pragma pack(pop)
+
+//------------------------------------------------------------------------
 struct thread_pass_data_t
 {
    thread_cb cb;
@@ -88,7 +103,7 @@ thread_handle_t ThreadCreate( thread_cb cb, void *data )
    pass->arg = data;
 
    DWORD thread_id;
-   thread_handle_t th = ::CreateThread( nullptr,   // SECURITY OPTIONS
+   thread_handle_t th = (thread_handle_t) ::CreateThread( nullptr,   // SECURITY OPTIONS
       0,                         // STACK SIZE, 0 is default
       ThreadEntryPointCommon,    // "main" for this thread
       pass,                     // data to pass to it
@@ -122,6 +137,37 @@ void ThreadJoin( thread_handle_t th )
 {
    ::WaitForSingleObject( th, INFINITE );
    ::CloseHandle( th );
+}
+
+//------------------------------------------------------------------------
+thread_id_t ThreadGetCurrentID()
+{
+   return (thread_id_t) (uintptr_t) ::GetCurrentThreadId();
+}
+
+//------------------------------------------------------------------------
+void ThreadSetNameInVisualStudio( char const *name )
+{
+     if (nullptr == name) {
+      return;
+   }
+
+   thread_id_t id = ThreadGetCurrentID();
+   if (0 != id) {
+      THREADNAME_INFO info;
+      info.type = 0x1000;
+      info.name = name;
+      info.thread_id =  (DWORD)(uintptr_t)id;
+      info.flags = 0;
+
+      __try 
+      {
+         RaiseException( MS_VC_EXCEPTION, 0, sizeof(info) / sizeof(ULONG_PTR), (ULONG_PTR*)(&info) );
+      } 
+      __except (EXCEPTION_CONTINUE_EXECUTION) 
+      {
+      }
+   }
 }
 
 

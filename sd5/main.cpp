@@ -14,38 +14,7 @@
 #include "src/profile.h"
 
 
-
-//--------------------------------------------------------------------
-int SpeedTest0( uint const iterations )
-{
-   gA = 0;
-   for (uint i = 0; i < iterations; ++i) {
-      gA += 3;
-      gA += i;
-      gA -= 2;
-   }
-
-   return gA;
-}
-
-
-//--------------------------------------------------------------------
-int SpeedTest1( uint const iterations ) 
-{
-   gB = 0;
-   for (uint i = 0; i < iterations; ++i) {
-      gB += 3;
-      gB += i;
-      gB -= 2;
-   }
-
-   return gB;
-}
-
-void SomeThreadFunction( int a, float b, char const *s ) 
-{
-}
-
+// Recursive Template Example with MAX
 template <typename T>
 T Max( T const &a, T const &b ) 
 {
@@ -58,93 +27,114 @@ T Max( T const &a, T const &b, ARGS ...args )
    return Max( a, Max( b, args... ) );
 }
 
-void PrintNumber( int c ) 
-{
-   printf( "%i\n", c );
-}
-
-#include <tuple>
-#include <utility>
-
-template <typename CB, typename ...ARGS>
-struct pass_data_t
-{
-   CB cb; 
-   std::tuple<ARGS...> args;
-
-   pass_data_t( CB cb, ARGS ...args )
-      : cb(cb)
-      , args(args...) {}
-};
-
-template <typename CB, typename TUPLE, size_t ...INDICES>
-void ForwardArgumentsWithIndices( CB cb, TUPLE &args, std::integer_sequence<size_t, INDICES...>& ) 
-{
-   cb( std::get<INDICES>(args)... );
-}
-
-template <typename CB, typename ...ARGS>
-void ForwardArgumentsThread( void *ptr ) 
-{
-   pass_data_t<CB,ARGS...> *args = (pass_data_t<CB,ARGS...>*) ptr;
-   ForwardArgumentsWithIndices( args->cb, args->args, std::make_index_sequence<sizeof...(ARGS)>() ); 
-   delete args;
-}
-
-template <typename CB, typename ...ARGS>
-thread_handle_t ThreadCreate( CB entry_point, ARGS ...args ) 
-{
-   pass_data_t<CB,ARGS...> *pass = new pass_data_t<CB,ARGS...>( entry_point, args... );
-   return ThreadCreate( ForwardArgumentsThread<CB,ARGS...>, (void*)pass );
-}
-
+// Example thread with parameters
 void ThreadDoWork( int a, float b, char const *c ) 
 {
    printf( "%i, %.4f, %s", a, b, c );
 }
 
-void TemplateWorkshop()
+
+typedef void* (*alloc_cb)( size_t );
+typedef void (*free_cb)( void* );
+
+#include <vector>
+
+#define ALLOC_SIZE (1024)
+uint const TOTAL_ALLOC_COUNT = 10000;
+uint const LIVE_ALLOC_COUNT = 1000;
+uint const CYCLE_ALLOC_COUNT = TOTAL_ALLOC_COUNT - LIVE_ALLOC_COUNT;
+
+// So this will be our baseline.  Fairly standard alloc and frees
+// and frees happen in the order they were allocated [similar to our use case
+// for the profiler]
+void BaseLine()
 {
-   int a = 1;
-   float b = 2.0f;
-   char const *c = "Chris the Hedgehog";
+   // 8 KB of data on the stack, 1 MB of data on the heap [1000 * 1024]
+   void* allocations[LIVE_ALLOC_COUNT];
 
-   // Foo( 1 );
-   // int c = Max( 4,  10 );
+   // do initial allocations;
+   for (uint i = 0; i < LIVE_ALLOC_COUNT; ++i) {
+      allocations[i] = malloc(ALLOC_SIZE);
+   }
 
-   int max = Max( 4, 2, 3, 7, 3, 5 );
-   ThreadCreate( ThreadDoWork, 1, 2.0f, "Hello" );
+   // now free and alloc in order for the remaining 
+   // [we're moving through this buffer in a circle - like a ring]
+   for (uint i = 0; i < CYCLE_ALLOC_COUNT; ++i) {
+      uint idx = i % LIVE_ALLOC_COUNT;
+      free( allocations[idx] );
+      allocations[idx] = malloc( ALLOC_SIZE );
+   }
 
-   //
-   // ThreadCreate( SomeThreadFunction, 1, 3.0f, "hello" );
+   // Now do the frees;
+   for (uint i = 0; i < LIVE_ALLOC_COUNT; ++i) {
+      free( allocations[i] );
+   }
 }
 
-
-
-
-
-#include "src/event.h"
-
-void SomeEventCB( void*, int a, int b ) 
+//--------------------------------------------------------------------
+// exact same code as above, but I'm using passed in function pointers
+void FunctionPointerTest( alloc_cb my_alloc, free_cb my_free ) 
 {
-   printf( "%i\n", Max(a, b) );
+   // 8 KB of data on the stack, 1 MB of data on the heap [1000 * 1024]
+   void* allocations[LIVE_ALLOC_COUNT];
+
+   // do initial allocations;
+   for (uint i = 0; i < LIVE_ALLOC_COUNT; ++i) {
+      allocations[i] = my_alloc(ALLOC_SIZE);
+   }
+
+   // now free and alloc in order for the remaining 
+   // [we're moving through this buffer in a circle - like a ring]
+   for (uint i = 0; i < CYCLE_ALLOC_COUNT; ++i) {
+      uint idx = i % LIVE_ALLOC_COUNT;
+      my_free( allocations[idx] );
+      allocations[idx] = my_alloc( ALLOC_SIZE );
+   }
+
+   // Now do the frees;
+   for (uint i = 0; i < LIVE_ALLOC_COUNT; ++i) {
+      my_free( allocations[i] );
+   }
+}
+
+//--------------------------------------------------------------------
+// Baseline for the function pointer version.
+uint gAllocCount = 0;
+void* TestAlloc( size_t size ) 
+{
+   return malloc(size);
+}
+
+void TestFree( void *ptr ) 
+{
+   free( ptr );
 }
 
 //--------------------------------------------------------------------
 int main( int argc, char const *argv[] ) 
-{
-   // MemoryDemo();
-   // pause();
-   
-   TemplateWorkshop();
-   EventV1<int,int> some_event;
-   some_event.subscribe( nullptr, SomeEventCB );
-   some_event.trigger( 3, 5 );
-   
-   SignalTest();
+{   
+   // run multiple tests - fluctuations in the machine change the result
+   // so we want an average one. 
+   uint const NUM_TESTS = 10;
+
+   // First, let's test our baseline.
+   for (uint i = 0; i < NUM_TESTS; ++i) {
+      PROFILE_LOG_SCOPE("BaseLine");
+      BaseLine();
+   }
    pause();
 
-   ThreadDemo();
+   // Next, lets see how much adding a "virtual function" adds to this
+   // [people say virtual allocs are slow - so.. how slow?]
+   for (uint i = 0; i < NUM_TESTS; ++i) {
+      PROFILE_LOG_SCOPE("FunctionPointerTest");
+      FunctionPointerTest( TestAlloc, TestFree );
+   }
+   pause();
+   // should have resulted in nearly identical results;
+   
+
+
    pause();
    return 0;
 }
