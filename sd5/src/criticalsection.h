@@ -24,7 +24,7 @@
 /************************************************************************/
 
 // creates a scoped critical section object named __lock_<LINE#>( &cs )
-#define SCOPE_LOCK( cs ) ScopeCriticalSection COMBINE(___lock_,__LINE__)(&cs)
+#define SCOPE_LOCK( cs ) ScopedLock<decltype(cs)> COMBINE(___lock_,__LINE__)(&cs)
 
 /************************************************************************/
 /*                                                                      */
@@ -70,14 +70,23 @@ class CriticalSection
 };
 
 //------------------------------------------------------------------------
-class ScopeCriticalSection
+template <typename LOCK>
+class ScopedLock
 {
    public:
-      ScopeCriticalSection( CriticalSection *ptr );
-      ~ScopeCriticalSection();
+      ScopedLock( LOCK *ptr )
+      {
+         cs_ptr = ptr;
+         cs_ptr->lock();
+      }
+
+      ~ScopedLock()
+      {
+         cs_ptr->unlock();
+      }
 
    public:
-      CriticalSection *cs_ptr;
+      LOCK *cs_ptr;
 };
 
 /************************************************************************/

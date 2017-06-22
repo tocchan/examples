@@ -92,20 +92,6 @@ void CriticalSection::unlock()
    ::LeaveCriticalSection( &cs );
 }
 
-//------------------------------------------------------------------------
-//------------------------------------------------------------------------
-ScopeCriticalSection::ScopeCriticalSection( CriticalSection *ptr ) 
-{
-   cs_ptr = ptr;
-   cs_ptr->lock();
-}
-
-//------------------------------------------------------------------------
-ScopeCriticalSection::~ScopeCriticalSection()
-{
-   cs_ptr->unlock();
-}
-
 /************************************************************************/
 /*                                                                      */
 /* COMMANDS                                                             */

@@ -19,7 +19,7 @@
 /* MACROS                                                               */
 /*                                                                      */
 /************************************************************************/
-#define PROFILE_LOG_SCOPE(s) ProfileLogScope __pscope_##__LINE__##(s)
+#define PROFILE_LOG_SCOPE(s) ProfileLogScope __pscope(s)
 
 /************************************************************************/
 /*                                                                      */
