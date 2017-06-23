@@ -193,7 +193,7 @@ uint FlushMessages( FILE *fh )
    uint count = 0;
    std::string msg;
 
-   while (gMessages.pop(&msg)) {
+   while (gMessages.dequeue(&msg)) {
       gLogEvent.trigger( &msg );
       ++count;
    }
@@ -242,7 +242,7 @@ void LoggerThread( void* )
 //------------------------------------------------------------------------
 void LogPrint( char const *msg ) 
 {
-   gMessages.push( msg );
+   gMessages.enqueue( msg );
    gLogSignal.signal_all();
 }
 

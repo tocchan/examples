@@ -143,6 +143,8 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="src\atomic.cpp" />
+    <ClCompile Include="src\blockallocator.cpp" />
     <ClCompile Include="src\callstack.cpp" />
     <ClCompile Include="src\common.cpp" />
     <ClCompile Include="src\criticalsection.cpp" />
@@ -156,6 +158,8 @@
     <ClCompile Include="src\ts_queue.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\atomic.h" />
+    <ClInclude Include="src\blockallocator.h" />
     <ClInclude Include="src\callstack.h" />
     <ClInclude Include="src\common.h" />
     <ClInclude Include="src\criticalsection.h" />
@@ -167,6 +171,7 @@
     <ClInclude Include="src\thread.h" />
     <ClInclude Include="src\time.h" />
     <ClInclude Include="src\ts_queue.h" />
+    <ClInclude Include="src\util.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
