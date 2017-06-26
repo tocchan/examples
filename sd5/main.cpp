@@ -116,11 +116,47 @@ void EmptyThread( uint *ptr )
 }
 
 //--------------------------------------------------------------------
+void CalculatePrimes( uint count, uint max_number ) 
+{
+   PROFILE_LOG_SCOPE("CalculatePrimes"); 
+
+   // one is always our first prime.
+   uint *primes = new uint[count];
+
+   primes[0] = 1;
+
+   uint c = 0;
+   for (uint n = 2; n <= max_number; ++n) {
+      // skip first prime
+      bool is_prime = true;
+      for (uint i = 1; i < c; ++i) {
+         if ((n % primes[i]) == 0) {
+            // not a prime - can be divided by a previous prime
+            is_prime = false;
+            break;
+         }
+      }
+
+      if (is_prime) {
+         primes[c] = n;
+         ++c;
+         if (c == count) {
+            break;
+         }
+      }
+   }
+
+   delete[] primes;
+}
+
+//--------------------------------------------------------------------
 int main( int argc, char const *argv[] ) 
 {   
-
    uint const NUM_TESTS = 10;
-   uint const NUM_THREADS = 4;
+   uint const NUM_THREADS = 64;
+
+   uint const CONTENDING_THREADS = 0;
+   uint const MAX_PRIMES = 100000; // in release, calculating 100000 primes took 18 seconds
 
    // Doing 10 million particles in release, 1 million in debug.
    #if defined(_DEBUG)
@@ -128,6 +164,12 @@ int main( int argc, char const *argv[] )
    #else 
       uint const NUM_PARTICLES = 10000000;
    #endif
+
+   
+   for (uint i = 0; i < CONTENDING_THREADS; ++i) {
+      thread_handle_t th = ThreadCreate( CalculatePrimes, MAX_PRIMES, (uint) 0x7fffffff );
+      ThreadDetach(th);
+   }
 
    particle_t *particles = new particle_t[NUM_PARTICLES];
 
