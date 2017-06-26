@@ -82,6 +82,7 @@ struct pass_data_t
 thread_handle_t ThreadCreate( thread_cb cb, void *data );
 
 void ThreadSleep( uint ms );
+void ThreadYield();
 
 // Releases my hold on this thread [one of these MUST be called per create]
 void ThreadDetach( thread_handle_t th );

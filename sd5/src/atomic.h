@@ -21,6 +21,22 @@
 /* FUNCTIONS                                                            */
 /*                                                                      */
 /************************************************************************/
+
+//--------------------------------------------------------------------
+// Will return the result of the operation
+__forceinline 
+uint AtomicAdd( uint volatile *ptr, uint const value ) 
+{
+   return (uint) ::InterlockedAddNoFence( (LONG volatile*)ptr, (LONG)value );
+}
+
+//--------------------------------------------------------------------
+__forceinline 
+uint AtomicIncrement( uint *ptr ) 
+{
+   return (uint) ::InterlockedIncrementNoFence( (LONG volatile*)ptr );
+}
+
 //--------------------------------------------------------------------
 __forceinline 
 uint CompareAndSet( uint volatile *ptr, uint const comparand, uint const value )

@@ -40,16 +40,24 @@ struct particle_t
 
       void update( float dt ) 
       {
-         // add a gravity well
          vec3 disp = pos; // how far are we from the center;
+
+         // do step as normal;
+         pos += dt * vel;
+         vel += dt * acc;
+
+         // add a gravity well
          float dist2 = disp.magnitude2();
          float grav = 100.0f / dist2; // acceleration inverse of distance
          disp.normalize();
          acc = -disp * grav; // make acc go toward the center.
+      }
 
-         // do step as normal;
-         vel += dt * acc;
-         pos += dt * vel;
+      particle_t get_updated( float dt ) const
+      {
+         particle_t ret = *this;
+         ret.update(dt);
+         return ret;
       }
 };
 
@@ -76,21 +84,43 @@ vec3 RandomInUnitCube()
 //--------------------------------------------------------------------
 static void UpdateParticles( particle_t *particles, uint const count, float const dt ) 
 {
-   char buffer[128];
-   sprintf_s( buffer, 128, "Particle Update :: %u", ThreadGetCurrentID() );
-   PROFILE_LOG_SCOPE(buffer);
-
    for (uint i = 0; i < count; ++i) {
       particles[i].update(dt);
    }
 }
 
 //--------------------------------------------------------------------
+// So this one works differently - instead of us giving the thread a 
+// chunk of work to do, this will pull chunks of work itself until it detects no 
+// work is left.
+static void UpdateParticlesInChunks( particle_t *particles, uint *idx_ptr, float dt, uint total ) 
+{
+   uint const STEP_SIZE = 1024;
+   
+   uint idx = AtomicAdd( idx_ptr, STEP_SIZE ) - STEP_SIZE; 
+   while (idx < total) {
+      uint stop = min( total, idx + STEP_SIZE );
+      for (uint i = idx; i < stop; ++i) {
+         particles[idx].update(dt);
+      }
+
+      idx = AtomicAdd( idx_ptr, STEP_SIZE ) - STEP_SIZE; 
+   }
+}
+
+//--------------------------------------------------------------------
+void EmptyThread( uint *ptr )
+{
+   // I do basically nothing!
+   AtomicIncrement( ptr );
+}
+
+//--------------------------------------------------------------------
 int main( int argc, char const *argv[] ) 
 {   
-   srand( (uint)TimeGetOpCount() );
 
    uint const NUM_TESTS = 10;
+   uint const NUM_THREADS = 4;
 
    // Doing 10 million particles in release, 1 million in debug.
    #if defined(_DEBUG)
@@ -105,15 +135,45 @@ int main( int argc, char const *argv[] )
       // Takes about a second on my home machine.
       PROFILE_LOG_SCOPE("Particles Init");
       // just initializing some noisy particles in a cube 10 long;
+      srand( (uint)TimeGetOpCount() );
       for (uint i = 0; i < NUM_PARTICLES; ++i) {
          particles[i].pos = 5.0f * RandomInUnitCube();
          particles[i].vel = 4.0f * RandomInUnitCube(); 
       }
    }
+
+
+   // First, let's time how long it takes to create threads;
+   uint const TOTAL_THREADS = 1000;
+   std::vector<thread_handle_t> thread_test;
+   thread_test.reserve(TOTAL_THREADS);
+
+   {
+      PROFILE_LOG_SCOPE( "1000 Atomics" );
+      uint count = 0;
+      for (uint i = 0; i < 1000; ++i) {
+         AtomicIncrement( &count ); 
+      }
+   }
+
+   {
+      PROFILE_LOG_SCOPE( "1000 Threads" );
+      uint count = 0;
+      for (uint i = 0; i < TOTAL_THREADS; ++i) {
+         thread_test.push_back( ThreadCreate( EmptyThread, &count ) );
+      }
+
+      while (count < TOTAL_THREADS) {
+         ThreadYield(); 
+      }
+   }
+   ThreadJoin( &thread_test[0], (uint) thread_test.size() );
+
    pause();
+   printf( "\n" );
+
 
    float dt = 0.0f;
-
    for (uint testi = 0; testi < NUM_TESTS; ++testi) {
       // Okay, so going for 60 frames per second.
       // add some noise to it to prevent compiler from optimizing for a constnat;
@@ -143,13 +203,10 @@ int main( int argc, char const *argv[] )
       // sample 2 : multi thread test - benchmark - how much does just spinning up a thread add?
       // Okay, this is worse - but as our "update" function gets more complicated, this starts getting better
       // meaning memory contention is likely our issue;
-      uint const NUM_THREADS = 8;
       {
          PROFILE_LOG_SCOPE("Particle Update :: MultiThread");
-         // Okay, let's try something else;
-         // sample 1 - single thread
          thread_handle_t threads[NUM_THREADS];
-         uint thread_part_count = NUM_PARTICLES / (NUM_THREADS); // +1 because the main thread is going to do some work too.
+         uint thread_part_count = NUM_PARTICLES / (NUM_THREADS + 1); // +1 because the main thread is going to do some work too.
          uint start_idx = 0;
 
          for (uint i = 0; i < NUM_THREADS; ++i) {
@@ -158,16 +215,37 @@ int main( int argc, char const *argv[] )
          }
 
          // while they're doing work - we should do work too! So do the remaining.
-         // UpdateParticles( particles + start_idx, NUM_PARTICLES - start_idx, dt );
+         UpdateParticles( particles + start_idx, NUM_PARTICLES - start_idx, dt );
 
          // wait for everyone to finish
          ThreadJoin( threads, NUM_THREADS );
       }
 
+      // sample 3 : multi thread test - benchmark - how much does just spinning up a thread add?
+      // Okay, this is worse - but as our "update" function gets more complicated, this starts getting better
+      // meaning memory contention is likely our issue;
+      {
+         PROFILE_LOG_SCOPE("Particle Update :: Chunked");
 
-      // add a space
-      printf( "\n" );
+         // Okay, let's try something else;
+         thread_handle_t threads[NUM_THREADS];
+         uint idx = 0;
+
+         for (uint i = 0; i < NUM_THREADS; ++i) {
+            threads[i] = ThreadCreate( UpdateParticlesInChunks, particles, &idx, dt, NUM_PARTICLES );
+         }
+
+         // while they're doing work - we should do work too! So do the remaining.
+         UpdateParticlesInChunks( particles, &idx, dt, NUM_PARTICLES );
+
+         // wait for everyone to finish - just because I ran out of work doesn't mean they're down with their acquired chunks
+         ThreadJoin( threads, NUM_THREADS );
+      }
+
+      // new line - space out each test.
+      printf("\n");
    }
+
 
    // a single update is about 4ms on my machine;
    pause();
