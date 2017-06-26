@@ -140,6 +140,14 @@ void ThreadJoin( thread_handle_t th )
 }
 
 //------------------------------------------------------------------------
+void ThreadJoin( thread_handle_t *th, uint count ) 
+{
+   for (uint i = 0; i < count; ++i) {
+      ThreadJoin(th[i]);
+   }
+}
+
+//------------------------------------------------------------------------
 thread_id_t ThreadGetCurrentID()
 {
    return (thread_id_t) (uintptr_t) ::GetCurrentThreadId();

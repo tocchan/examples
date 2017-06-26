@@ -12,152 +12,167 @@
 #include "src/signal.h"
 #include "src/blockallocator.h"
 #include "src/ts_queue.h"
-
+#include "src/vec3.h"
 
 #include "src/profile.h"
 
 
-class SystemAllocator : public IAllocator 
+
+//--------------------------------------------------------------------
+// JOB SYSTEM STUFF
+//--------------------------------------------------------------------
+
+
+
+//--------------------------------------------------------------------
+struct particle_t
 {
    public:
-      void* alloc( size_t size ) { return ::malloc(size); }
-      void free( void *ptr ) { return ::free(ptr); }
+      vec3 pos;
+      vec3 vel;
+      vec3 acc;
+
+   public:
+      particle_t()
+      {
+         acc = vec3( 0.0f, 0.0f, -9.8f );
+      }
+
+      void update( float dt ) 
+      {
+         // add a gravity well
+         vec3 disp = pos; // how far are we from the center;
+         float dist2 = disp.magnitude2();
+         float grav = 100.0f / dist2; // acceleration inverse of distance
+         disp.normalize();
+         acc = -disp * grav; // make acc go toward the center.
+
+         // do step as normal;
+         vel += dt * acc;
+         pos += dt * vel;
+      }
 };
 
-
-int const BLOCK_SIZE = 1024;
-uint const NUM_QUEUES = 8;
-
-SystemAllocator gSystemAllocator;
-BlockAllocator gBlockAllocator(BLOCK_SIZE);
-ThreadSafeBlockAllocator gTSBlockAllocator(BLOCK_SIZE);
-LocklessBlockAllocator gLFBlockAllocator(BLOCK_SIZE);
-
-ThreadSafeQueue<void*> gQueues[NUM_QUEUES];
-
 //--------------------------------------------------------------------
-uint AddBytes( void *ptr )
+// return a random float between 0.0f and 1.0f;
+float RandomFl() 
 {
-   uint v = 0;
-   byte_t *c = (byte_t*)ptr;
-   for (uint i = 0; i < 512; ++i) {
-      v += c[i];
-      c[i] = (byte_t)(2 * c[i] + 3);
-   }
-
-   return v;
+   return (float)rand() / (float)RAND_MAX;
 }
 
+float RandomFl( float min, float max ) 
+{
+   float v = RandomFl();
+   return min + (max - min) * v;
+}
+
+vec3 RandomInUnitCube()
+{
+   return vec3( RandomFl( -1.0f, 1.0f ), 
+      RandomFl( -1.0f, 1.0f ), 
+      RandomFl( -1.0f, 1.0f ) );
+}
 
 //--------------------------------------------------------------------
-#pragma optimize( "", off )  
-void AllocatorTest( IAllocator *allocator, uint count ) 
+static void UpdateParticles( particle_t *particles, uint const count, float const dt ) 
 {
+   char buffer[128];
+   sprintf_s( buffer, 128, "Particle Update :: %u", ThreadGetCurrentID() );
+   PROFILE_LOG_SCOPE(buffer);
 
-   uint value = 0;
-   void *ptr = nullptr;
-
-   // Run through this count times, randomly selecting a queue
-   // reading from it, and free if we succeed
-   // then make a new allocation and push it;
-   // This is to prvent compiler from realizing all allocations are created within the same scope
    for (uint i = 0; i < count; ++i) {
-
-      int queue_idx = rand() % NUM_QUEUES;
-      ThreadSafeQueue<void*> *q = gQueues + queue_idx;
-
-      if (q->dequeue(&ptr)) {
-         value += AddBytes(ptr);
-         allocator->free(ptr);
-      }
-
-      ptr = allocator->alloc(BLOCK_SIZE);
-      q->enqueue(ptr);
+      particles[i].update(dt);
    }
-
-   // once we're done, make sure all the queues are empty
-   for (uint i = 0; i < NUM_QUEUES; ++i) {
-      ThreadSafeQueue<void*> *q = gQueues + i;
-      while (q->dequeue(&ptr)) {
-         value += AddBytes(ptr);
-         allocator->free(ptr); 
-      }
-   }
-
-   // printf( "Final Value: %i\n", value );
 }
-#pragma optimize( "", on )  
 
 //--------------------------------------------------------------------
 int main( int argc, char const *argv[] ) 
 {   
-   // run multiple tests - fluctuations in the machine change the result
-   // so we want an average one. 
-   uint const NUM_TESTS = 4;
+   srand( (uint)TimeGetOpCount() );
 
-   uint const NUM_THREADS = 8;
-   thread_handle_t threads[NUM_THREADS];
+   uint const NUM_TESTS = 10;
 
-   int count = 100000;
-   printf( "Enter Count: " );
-   scanf_s( "%i", &count );
+   // Doing 10 million particles in release, 1 million in debug.
+   #if defined(_DEBUG)
+      uint const NUM_PARTICLES = 1000000;
+   #else 
+      uint const NUM_PARTICLES = 10000000;
+   #endif
 
-   // Single threaded test.
-   printf( "Single Threaded Test...\n" );
-   for (uint i = 0; i < NUM_TESTS; ++i) {
-      {
-         PROFILE_LOG_SCOPE("Malloc - Single");
-         AllocatorTest( &gSystemAllocator, count );
-      }
+   particle_t *particles = new particle_t[NUM_PARTICLES];
 
-      {
-         PROFILE_LOG_SCOPE("Block - Single");
-         AllocatorTest( &gBlockAllocator, count );
+   {
+      // Takes about a second on my home machine.
+      PROFILE_LOG_SCOPE("Particles Init");
+      // just initializing some noisy particles in a cube 10 long;
+      for (uint i = 0; i < NUM_PARTICLES; ++i) {
+         particles[i].pos = 5.0f * RandomInUnitCube();
+         particles[i].vel = 4.0f * RandomInUnitCube(); 
       }
    }
    pause();
 
-   // Multi threaded test...
-   printf( "Multi-threaded Test...\n" );
-   for (uint i = 0; i < NUM_TESTS; ++i) {
-      {
-         PROFILE_LOG_SCOPE("MallocTest");
-         for (uint i = 0; i < NUM_THREADS; ++i) {
-            threads[i] = ThreadCreate( AllocatorTest, &gSystemAllocator, count );
-         }
+   float dt = 0.0f;
 
-         for (uint i = 0; i < NUM_THREADS; ++i) {
-            ThreadJoin( threads[i] );
-         }
+   for (uint testi = 0; testi < NUM_TESTS; ++testi) {
+      // Okay, so going for 60 frames per second.
+      // add some noise to it to prevent compiler from optimizing for a constnat;
+      dt = (1.0f / 60.0f) + RandomFl( -0.001f, 0.001f );
+
+      // sample 0 - main thread test
+      {
+         PROFILE_LOG_SCOPE("Particles Update :: Main Thread");
+         UpdateParticles( particles, NUM_PARTICLES, dt );
       }
 
+      // sample 1 : single thread test - benchmark - how much does just spinning up a thread add?
+      // and splitting the load.
       {
-         PROFILE_LOG_SCOPE("LockedAllocator");
-         for (uint i = 0; i < NUM_THREADS; ++i) {
-            threads[i] = ThreadCreate( AllocatorTest, &gTSBlockAllocator, count );
-         }
+         PROFILE_LOG_SCOPE("Particle Update :: One Thread");
+         // Okay, let's try something else;
+         // sample 1 - single thread
+         uint thread_part_count = NUM_PARTICLES / 2;
+         thread_handle_t th = ThreadCreate( UpdateParticles, particles, thread_part_count, dt );
 
-         for (uint i = 0; i < NUM_THREADS; ++i) {
-            ThreadJoin( threads[i] );
-         }
+         // while they're doing work - we should do work too! 
+         UpdateParticles( particles + thread_part_count, NUM_PARTICLES - thread_part_count, dt );
+
+         ThreadJoin(th);
       }
 
+      // sample 2 : multi thread test - benchmark - how much does just spinning up a thread add?
+      // Okay, this is worse - but as our "update" function gets more complicated, this starts getting better
+      // meaning memory contention is likely our issue;
+      uint const NUM_THREADS = 8;
       {
-         PROFILE_LOG_SCOPE("LockFreeAllocator");
-         for (uint i = 0; i < NUM_THREADS; ++i) {
-            threads[i] = ThreadCreate( AllocatorTest, &gLFBlockAllocator, count );
-         }
+         PROFILE_LOG_SCOPE("Particle Update :: MultiThread");
+         // Okay, let's try something else;
+         // sample 1 - single thread
+         thread_handle_t threads[NUM_THREADS];
+         uint thread_part_count = NUM_PARTICLES / (NUM_THREADS); // +1 because the main thread is going to do some work too.
+         uint start_idx = 0;
 
          for (uint i = 0; i < NUM_THREADS; ++i) {
-            ThreadJoin( threads[i] );
+            threads[i] = ThreadCreate( UpdateParticles, particles + start_idx, thread_part_count, dt );
+            start_idx += thread_part_count;
          }
+
+         // while they're doing work - we should do work too! So do the remaining.
+         // UpdateParticles( particles + start_idx, NUM_PARTICLES - start_idx, dt );
+
+         // wait for everyone to finish
+         ThreadJoin( threads, NUM_THREADS );
       }
+
+
+      // add a space
+      printf( "\n" );
    }
-   printf( "Max Allocations: %u\n", gTSBlockAllocator.alloc_count );
+
+   // a single update is about 4ms on my machine;
    pause();
 
-
-
+   delete[] particles;
    return 0;
 }
 

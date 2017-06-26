@@ -116,7 +116,6 @@ class EventV0
 
 //--------------------------------------------------------------------
 // EVENT VERSION 1
-// - Thread Safety around 
 // Variadic Templates
 //--------------------------------------------------------------------
 template <typename ...ARGS>
