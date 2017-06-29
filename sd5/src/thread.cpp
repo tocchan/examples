@@ -193,7 +193,7 @@ ThreadSafeQueue<std::string> gMessages;
 thread_handle_t gLoggerThread = nullptr;
 bool gLoggerThreadRunning = true;
 Signal gLogSignal; 
-EventV0 gLogEvent; 
+Event<std::string*> gLogEvent; 
 
 //------------------------------------------------------------------------
 uint FlushMessages( FILE *fh )
@@ -210,18 +210,15 @@ uint FlushMessages( FILE *fh )
 }
 
 //------------------------------------------------------------------------
-void LogWriteToFile( void *user_arg, void *event_arg ) 
+void LogWriteToFile( void *user_arg, std::string *msg ) 
 {
    FILE *fh = (FILE*) user_arg;
-   std::string *msg = (std::string*)event_arg;
-
    fprintf( fh, "%s\n", msg->c_str() ); 
 }
 
 //------------------------------------------------------------------------
-void LogWriteToDebugger( void *user_arg, void *event_arg )
+void LogWriteToDebugger( void*, std::string *msg )
 {
-   std::string *msg = (std::string*)event_arg;
    OutputDebugStringA( msg->c_str() );
    OutputDebugStringA( "\n" );
 }

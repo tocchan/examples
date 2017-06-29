@@ -1,9 +1,17 @@
+#pragma once
+#if !defined( __JOB__ )
+#define __JOB__
+
 /************************************************************************/
 /*                                                                      */
 /* INCLUDE                                                              */
 /*                                                                      */
 /************************************************************************/
-#include "event.h"
+#include "common.h"
+
+#include "ts_queue.h"
+#include "signal.h"
+#include "atomic.h"
 
 /************************************************************************/
 /*                                                                      */
@@ -22,6 +30,15 @@
 /* TYPES                                                                */
 /*                                                                      */
 /************************************************************************/
+enum eJobType 
+{
+   JOB_GENERIC = 0,
+   JOB_MAIN, 
+   JOB_IO, 
+   JOB_RENDER, 
+
+   JOB_TYPE_COUNT,
+};
 
 /************************************************************************/
 /*                                                                      */
@@ -29,17 +46,43 @@
 /*                                                                      */
 /************************************************************************/
 
+
 /************************************************************************/
 /*                                                                      */
 /* CLASSES                                                              */
 /*                                                                      */
 /************************************************************************/
+class Job;
+void JobDispatchAndRelease( Job *job );
 
-/************************************************************************/
-/*                                                                      */
-/* LOCAL VARIABLES                                                      */
-/*                                                                      */
-/************************************************************************/
+
+typedef void (*job_work_cb)( void* );
+
+//--------------------------------------------------------------------
+//--------------------------------------------------------------------
+class Job
+{
+   public:
+      eJobType type; 
+      job_work_cb work_cb;
+
+      void *user_data;
+
+      std::vector<Job*> dependents;
+      uint num_dependencies;
+
+   public:
+      void on_finish();
+      void on_dependancy_finished(); 
+
+      void dependent_on( Job *parent ); 
+};
+
+//--------------------------------------------------------------------
+//--------------------------------------------------------------------
+class JobConsumer
+{
+};
 
 /************************************************************************/
 /*                                                                      */
@@ -49,77 +92,17 @@
 
 /************************************************************************/
 /*                                                                      */
-/* LOCAL FUNCTIONS                                                      */
+/* FUNCTION PROTOTYPES                                                  */
 /*                                                                      */
 /************************************************************************/
+void JobSystemStartup( uint job_category_count, int generic_thread_count = -1 );
+void JobSystemShutdown();
 
-/************************************************************************/
-/*                                                                      */
-/* EXTERNAL FUNCTIONS                                                   */
-/*                                                                      */
-/************************************************************************/
+Job* JobCreate( eJobType type, job_work_cb work_cb, void *user_data );
+void JobDispatchAndRelease( Job *job );
 
-/************************************************************************/
-/*                                                                      */
-/* COMMANDS                                                             */
-/*                                                                      */
-/************************************************************************/
+//------------------------------------------------------------------------
+// THIS SHOULD BE MOVED TO A JOB CONSUMER OBJECT!
+uint JobConsumeAll( eJobType type );
 
-/************************************************************************/
-/*                                                                      */
-/* UNIT TESTS                                                           */
-/*                                                                      */
-/************************************************************************/
-
-class MethodExample
-{
-   public:
-      int some_method( int a, int b )
-      {
-         printf( "Hi: %i, %i\n", a, b );
-         return a + b;
-      }
-
-      void some_other_method( int a, int b )
-      {
-         printf( "oooo, magic.... %i\n", a + b );
-      }
-
-      typedef int (MethodExample::*method_cb)( int, int );
-      method_cb cb;
-};
-
-int SomeFunction( MethodExample*, int a, int b ) 
-{
-   printf( "Hi: %i, %i\n", a, b );
-   return a * b;
-}
-
-typedef int (__cdecl *func_cb)( MethodExample*, int, int );
-
-
-void EventTest()
-{
-   int v = 0;
-
-   MethodExample example;
-   v = example.some_method( 1, 2 );
-   v = SomeFunction( &example, 3, 4 );
-
-   Event<int, int> sample_event;
-   sample_event.subscribe_method( &example, &MethodExample::some_other_method );
-   sample_event.unsubscribe_method( &example, &MethodExample::some_other_method );
-   sample_event.trigger( 5, 12 );
-
-
-   MethodExample::method_cb cb = &MethodExample::some_method;
-   example.cb = &MethodExample::some_method;
-   (example.*cb)(5, 7);
-
-   func_cb fa = SomeFunction;
-   auto test = &(MethodExample::some_method);
-   func_cb fb = *(func_cb*)(void*)&test;
-
-   v = fa( &example, 1, 2 );
-   v = fb( &example, 3, 4 );
-}
+#endif 

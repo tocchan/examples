@@ -15,6 +15,7 @@
 #include "src/vec3.h"
 
 #include "src/profile.h"
+#include "src/job.h"
 
 
 
@@ -68,6 +69,7 @@ float RandomFl()
    return (float)rand() / (float)RAND_MAX;
 }
 
+//--------------------------------------------------------------------
 float RandomFl( float min, float max ) 
 {
    float v = RandomFl();
@@ -95,7 +97,7 @@ static void UpdateParticles( particle_t *particles, uint const count, float cons
 // work is left.
 static void UpdateParticlesInChunks( particle_t *particles, uint *idx_ptr, float dt, uint total ) 
 {
-   uint const STEP_SIZE = 1024;
+   uint const STEP_SIZE = 4096;
    
    uint idx = AtomicAdd( idx_ptr, STEP_SIZE ) - STEP_SIZE; 
    while (idx < total) {
@@ -150,10 +152,64 @@ void CalculatePrimes( uint count, uint max_number )
 }
 
 //--------------------------------------------------------------------
+void EmptyJob( void *ptr )
+{
+   uint *count_ptr = (uint*)ptr;
+   AtomicIncrement( count_ptr );
+}
+
+//--------------------------------------------------------------------
+static bool gDone = false;
+void OnEverythingDone( void *ptr )
+{
+   gDone = true;
+}
+
+//--------------------------------------------------------------------
+void JobSystemTest()
+{
+   JobSystemStartup( JOB_TYPE_COUNT );
+
+   {
+      PROFILE_LOG_SCOPE("JobDispatchAndReleaseTime");
+      uint count = 0;
+      Job *final_job = JobCreate( JOB_GENERIC, OnEverythingDone, nullptr );
+
+      for (uint i = 0; i < 1000; ++i) {
+         Job *job = JobCreate( JOB_GENERIC, EmptyJob, &count );
+         final_job->dependent_on( job );
+         JobDispatchAndRelease( job );
+      }
+      JobDispatchAndRelease( final_job );
+
+      while (!gDone) {
+         ThreadYield(); 
+      }
+
+      count = count;
+   }
+
+   JobSystemShutdown();
+}
+
+#include "src/event.h"
+
+//--------------------------------------------------------------------
 int main( int argc, char const *argv[] ) 
 {   
+   EventTest();
+   pause();
+
+   JobSystemTest();
+
+
+
+
+
+
+
    uint const NUM_TESTS = 10;
-   uint const NUM_THREADS = 64;
+   uint const NUM_THREADS = 8;
 
    uint const CONTENDING_THREADS = 0;
    uint const MAX_PRIMES = 100000; // in release, calculating 100000 primes took 18 seconds

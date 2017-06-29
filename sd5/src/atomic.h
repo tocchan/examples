@@ -39,6 +39,13 @@ uint AtomicIncrement( uint *ptr )
 
 //--------------------------------------------------------------------
 __forceinline 
+uint AtomicDecrement( uint *ptr ) 
+{
+   return (uint) ::InterlockedDecrementNoFence( (LONG volatile*)ptr );
+}
+
+//--------------------------------------------------------------------
+__forceinline 
 uint CompareAndSet( uint volatile *ptr, uint const comparand, uint const value )
 {
    /*
