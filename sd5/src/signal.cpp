@@ -63,7 +63,7 @@
 Signal::Signal()
 {
    os_event = ::CreateEvent( nullptr, // security attributes, not needed
-      FALSE,                           // Manual reset - do we manually reset, or auto reset after this is hit.
+      TRUE,                           // Manual reset - do we manually reset, or auto reset after this is hit.
       FALSE,                          // initial state of the signal
       NULL );                         // name, used for cross-process communication
 }
