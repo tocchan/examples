@@ -9,6 +9,7 @@
 #include "signal.h"
 #include "atomic.h"
 #include "thread.h"
+#include "profile.h"
 
 /************************************************************************/
 /*                                                                      */
@@ -184,6 +185,48 @@ uint JobConsumeAll( eJobType type )
 
    return processed_jobs;
 }
+
+//--------------------------------------------------------------------
+static void EmptyJob( void *ptr )
+{
+   uint *count_ptr = (uint*)ptr;
+   AtomicIncrement( count_ptr );
+}
+
+//--------------------------------------------------------------------
+static bool gDone = false;
+static void OnEverythingDone( void *ptr )
+{
+   gDone = true;
+}
+
+//--------------------------------------------------------------------
+void JobSystemTest()
+{
+   JobSystemStartup( JOB_TYPE_COUNT );
+
+   {
+      PROFILE_LOG_SCOPE("JobDispatchAndReleaseTime");
+      uint count = 0;
+      Job *final_job = JobCreate( JOB_GENERIC, OnEverythingDone, nullptr );
+
+      for (uint i = 0; i < 1000; ++i) {
+         Job *job = JobCreate( JOB_GENERIC, EmptyJob, &count );
+         final_job->dependent_on( job );
+         JobDispatchAndRelease( job );
+      }
+      JobDispatchAndRelease( final_job );
+
+      while (!gDone) {
+         ThreadYield(); 
+      }
+
+      count = count;
+   }
+
+   JobSystemShutdown();
+}
+
 
 /************************************************************************/
 /*                                                                      */

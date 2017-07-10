@@ -1,6 +1,6 @@
 #pragma once
-#if !defined( __JOB__ )
-#define __JOB__
+#if !defined( __RANDOM__ )
+#define __RANDOM__
 
 /************************************************************************/
 /*                                                                      */
@@ -9,9 +9,7 @@
 /************************************************************************/
 #include "common.h"
 
-#include "ts_queue.h"
-#include "signal.h"
-#include "atomic.h"
+#include "vec3.h"
 
 /************************************************************************/
 /*                                                                      */
@@ -30,15 +28,6 @@
 /* TYPES                                                                */
 /*                                                                      */
 /************************************************************************/
-enum eJobType 
-{
-   JOB_GENERIC = 0,
-   JOB_MAIN, 
-   JOB_IO, 
-   JOB_RENDER, 
-
-   JOB_TYPE_COUNT,
-};
 
 /************************************************************************/
 /*                                                                      */
@@ -46,43 +35,11 @@ enum eJobType
 /*                                                                      */
 /************************************************************************/
 
-
 /************************************************************************/
 /*                                                                      */
 /* CLASSES                                                              */
 /*                                                                      */
 /************************************************************************/
-class Job;
-void JobDispatchAndRelease( Job *job );
-
-
-typedef void (*job_work_cb)( void* );
-
-//--------------------------------------------------------------------
-//--------------------------------------------------------------------
-class Job
-{
-   public:
-      eJobType type; 
-      job_work_cb work_cb;
-
-      void *user_data;
-
-      std::vector<Job*> dependents;
-      uint num_dependencies;
-
-   public:
-      void on_finish();
-      void on_dependancy_finished(); 
-
-      void dependent_on( Job *parent ); 
-};
-
-//--------------------------------------------------------------------
-//--------------------------------------------------------------------
-class JobConsumer
-{
-};
 
 /************************************************************************/
 /*                                                                      */
@@ -95,18 +52,15 @@ class JobConsumer
 /* FUNCTION PROTOTYPES                                                  */
 /*                                                                      */
 /************************************************************************/
-void JobSystemStartup( uint job_category_count, int generic_thread_count = -1 );
-void JobSystemShutdown();
+void RandomSeed();
 
-Job* JobCreate( eJobType type, job_work_cb work_cb, void *user_data );
-void JobDispatchAndRelease( Job *job );
+uint Random();
+uint Random( uint min, uint max );
 
-//------------------------------------------------------------------------
-// THIS SHOULD BE MOVED TO A JOB CONSUMER OBJECT!
-uint JobConsumeAll( eJobType type );
+float RandomFl();
+float RandomFl( float min, float max );
 
-
-void JobSystemTest();
+vec3 RandomInUnitCube();
 
 
 #endif 
