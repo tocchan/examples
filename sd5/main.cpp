@@ -13,6 +13,7 @@
 #include "src/blockallocator.h"
 #include "src/ts_queue.h"
 #include "src/vec3.h"
+#include "src/random.h"
 
 #include "src/profile.h"
 #include "src/job.h"
@@ -61,27 +62,6 @@ struct particle_t
          return ret;
       }
 };
-
-//--------------------------------------------------------------------
-// return a random float between 0.0f and 1.0f;
-float RandomFl() 
-{
-   return (float)rand() / (float)RAND_MAX;
-}
-
-//--------------------------------------------------------------------
-float RandomFl( float min, float max ) 
-{
-   float v = RandomFl();
-   return min + (max - min) * v;
-}
-
-vec3 RandomInUnitCube()
-{
-   return vec3( RandomFl( -1.0f, 1.0f ), 
-      RandomFl( -1.0f, 1.0f ), 
-      RandomFl( -1.0f, 1.0f ) );
-}
 
 //--------------------------------------------------------------------
 static void UpdateParticles( particle_t *particles, uint const count, float const dt ) 
