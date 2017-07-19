@@ -43,7 +43,7 @@
 class JobSystem
 {
    public:
-      ThreadSafeQueue<Job*> *queues;
+      JobQueue *queues;
       Signal **signals;
       uint queue_count;
 
@@ -72,33 +72,146 @@ static JobSystem *gJobSystem = nullptr;
 //------------------------------------------------------------------------
 static void GenericJobThread( Signal *signal ) 
 {
+   JobConsumer consumer;
+   consumer.add_category( JOB_GENERIC );
+
    while (gJobSystem->is_running) {
       signal->wait();
-      JobConsumeAll( JOB_GENERIC );
+      consumer.consume_all_jobs();
    }
 
-   JobConsumeAll( JOB_GENERIC );
+   consumer.consume_all_jobs();
 }
+
+/************************************************************************/
+/*                                                                      */
+/* GLOBAL FUNCTIONS                                                     */
+/*                                                                      */
+/************************************************************************/
 
 //------------------------------------------------------------------------
 void Job::on_finish()
 {
+   // we're done - do this first - as anyone waiting 
+   // doesn't care about my dependendants, so we'll let them know as soon as possible.
+   set_state( JOB_STATE_FINISHED );
+
+   // inform our dependants that we are done.
    for (uint i = 0; i < dependents.size(); ++i) {
       dependents[i]->on_dependancy_finished();
    }
+   
+   // in the case I recycle these - want to make sure this starts cleared.
+   dependents.clear();
 }
 
 //------------------------------------------------------------------------
 void Job::on_dependancy_finished() 
 {
+   // we both dispatch and release [the dependancy's hold on me]
+   // You'll notice ref_count should almost be >= than dependancy_count due to this;
    JobDispatchAndRelease( this );
 }
 
 //------------------------------------------------------------------------
 void Job::dependent_on( Job *parent ) 
 {
-   AtomicIncrement( &num_dependencies );
+   // TODO:  Only allow this if the parent has not yet been dispatched once
+   // [and warning/assert if not].  May require an additional state.
+
+   // I have a no dependancy, increment the count
+   AtomicIncrement( &dependancy_count );
+
+   // Increment my reference count, as this parent is now holding on to me as well.
+   JobAcquire( this );
+
+   // Push it back
    parent->dependents.push_back( this );
+}
+
+//------------------------------------------------------------------------
+void Job::set_state( eJobState new_state ) 
+{
+   state = new_state;
+}
+
+//------------------------------------------------------------------------
+// JobConsumer
+//------------------------------------------------------------------------
+
+//------------------------------------------------------------------------
+void JobConsumer::add_category( uint category )
+{
+   JobQueue *queue = JobSystemGetQueue( category );
+   if (nullptr == queue) {
+      // error/warning -> category didn't exist
+      return; 
+   }
+
+   // Add uniquely!  Takes no time to search it, and consumers
+   // should be setup at init time, so the cost doesn't matter.
+   if (std::find( queues.begin(), queues.end(), queue ) == queues.end()) {
+      queues.push_back( queue );
+   }
+}
+
+//------------------------------------------------------------------------
+bool JobConsumer::consume_job()
+{
+   Job *job = nullptr;
+   for (uint i = 0; i < queues.size(); ++i) {
+      JobQueue *queue = queues[i];
+      if (queue->dequeue( &job )) {
+
+         // queue no longer holds it, and now the consumer does
+         // so instead of acquiring and releasing, I just do nothing
+         // as the reference silently passes between the two states.
+         job->set_state( JOB_STATE_RUNNING );
+
+         // Do the work
+         job->work_cb( job->user_data );
+
+         // And we're done.
+         job->on_finish();
+         job->dependents.clear();
+         
+         // release my hold on this job.
+         JobRelease(job);
+         return true;
+      }
+   }
+
+   // no queues had work for me - then this failed
+   return false;
+}
+
+//------------------------------------------------------------------------
+uint JobConsumer::consume_all_jobs()
+{
+   // all work is in consume job - so.. just do that while it succeeds.
+   uint count = 0;
+   while (consume_job()) {
+      ++count;
+   }
+
+   return count;
+}
+
+//------------------------------------------------------------------------
+uint JobConsumer::consume_for_ms( uint ms )
+{
+   uint count = 0;
+   uint start = TimeGet_ms();
+   do {
+      // consume a job - if we fail - just return, no reason to busy loop.
+      if (!consume_job()) {
+         return count; 
+      }
+      // otherwise (we consumed a job), increment the count and see if we've elapsed time.
+      ++count;
+   } while ((TimeGet_ms() - start) < ms);
+
+   return count;
 }
 
 //------------------------------------------------------------------------
@@ -135,6 +248,33 @@ void JobSystemShutdown()
 {
    // dont' forget to clean up.
    // TODO!
+
+   // You should stop the system
+   // and ensure all enqueued jobs have finished.
+}
+
+//------------------------------------------------------------------------
+void JobSystemSetSignal( uint category, Signal *signal )
+{
+   // not a proper category?  Return
+   if (category >= gJobSystem->queue_count) {
+      return; 
+   }
+
+   gJobSystem->signals[category] = signal;
+}
+
+//------------------------------------------------------------------------
+JobQueue* JobSystemGetQueue(uint category)
+{
+   // not a proper category?  Return
+   if (category >= gJobSystem->queue_count) {
+      return nullptr;
+   }
+
+   // notice I return a POINTER to the queue
+   // there is only ever one unique queue, and the consumers just reference it.
+   return &(gJobSystem->queues[category]);
 }
 
 
@@ -143,24 +283,50 @@ Job* JobCreate( eJobType type, job_work_cb work_cb, void *user_data )
 {
    Job *job = new Job();
    job->type = type;
+   job->state = JOB_STATE_WAITING;
    job->work_cb = work_cb;
    job->user_data = user_data;
-   job->num_dependencies = 1;
+   job->dependancy_count = 1;
+   job->ref_count = 1;
 
    return job;
 }
 
 //------------------------------------------------------------------------
-void JobDispatchAndRelease( Job *job )
+void JobAcquire( Job *job )
+{
+   AtomicIncrement( &job->ref_count );
+}
+
+//------------------------------------------------------------------------
+void JobRelease( Job *job )
+{
+   // remove a reference - if we're the last one, delete me!
+   uint ref_count = AtomicDecrement( &job->ref_count );
+   if (0 == ref_count) {
+      delete job;
+   }
+}
+
+//------------------------------------------------------------------------
+void JobDispatch( Job *job )
 {
    // if I'm not ready to run, don't. 
-   uint dcount = AtomicDecrement( &job->num_dependencies );
+   uint dcount = AtomicDecrement( &job->dependancy_count );
    if (dcount != 0) {
       return; 
    }
 
+   // update my state
+   job->state = JOB_STATE_ENQUEUED; 
 
+   // I'm being qneueued - so the queue now holds a reference to me
+   // do this BEFORE qneueing to prevent the job system
+   // from potentially releasing before I have a chance to acquire.
+   JobAcquire( job );
    gJobSystem->queues[job->type].enqueue( job );
+
+   // IF a signal is associated with this job type, signal it.
    Signal *signal = gJobSystem->signals[job->type];
    if (nullptr != signal) {
       signal->signal_all();
@@ -168,23 +334,36 @@ void JobDispatchAndRelease( Job *job )
 }
 
 //------------------------------------------------------------------------
-// THIS SHOULD BE MOVED TO A JOB CONSUMER OBJECT!
-uint JobConsumeAll( eJobType type )
+void JobDispatchAndRelease( Job *job )
 {
-   Job *job;
-   uint processed_jobs = 0;
-
-   ThreadSafeQueue<Job*> &queue = gJobSystem->queues[type];
-   while (queue.dequeue(&job)) {
-      job->work_cb( job->user_data );
-      ++processed_jobs;
-
-      job->on_finish();
-      delete job;
-   }
-
-   return processed_jobs;
+   // exactly as the name says.
+   JobDispatch( job );
+   JobRelease( job );
 }
+
+
+//------------------------------------------------------------------------
+void JobWait( Job *job, JobConsumer *consumer )
+{
+   while (!job->is_finished()) {
+      if (consumer != nullptr) {
+         consumer->consume_job(); 
+      } 
+   }
+}
+
+//------------------------------------------------------------------------
+void JobWaitAndRelease( Job *job, JobConsumer *consumer )
+{
+   JobWait( job, consumer );
+   JobRelease( job );
+}
+
+
+//--------------------------------------------------------------------
+// Some test code - make sure I did the thing right! 
+//--------------------------------------------------------------------
+
 
 //--------------------------------------------------------------------
 static void EmptyJob( void *ptr )
@@ -197,6 +376,14 @@ static void EmptyJob( void *ptr )
 static bool gDone = false;
 static void OnEverythingDone( void *ptr )
 {
+   uint *count_ptr = (uint*)ptr;
+
+   // assert count_ptr is 1000 [make sure all other jobs got to run first!]
+   uint count = *count_ptr; 
+   if (count != 1000) {
+      __debugbreak();
+   }
+
    gDone = true;
 }
 
@@ -205,23 +392,33 @@ void JobSystemTest()
 {
    JobSystemStartup( JOB_TYPE_COUNT );
 
+
+   // Make sure creating and releasing work [does not dispatch - job does not run!]
+   Job *job = JobCreate( JOB_GENERIC, EmptyJob, nullptr );
+   JobRelease( job );
+
+   // Next, lets kick off jobs, and make sure they're freeing up.
    {
       PROFILE_LOG_SCOPE("JobDispatchAndReleaseTime");
       uint count = 0;
-      Job *final_job = JobCreate( JOB_GENERIC, OnEverythingDone, nullptr );
+      Job *final_job = JobCreate( JOB_GENERIC, OnEverythingDone, &count );
 
       for (uint i = 0; i < 1000; ++i) {
-         Job *job = JobCreate( JOB_GENERIC, EmptyJob, &count );
+         job = JobCreate( JOB_GENERIC, EmptyJob, &count );
          final_job->dependent_on( job );
          JobDispatchAndRelease( job );
       }
-      JobDispatchAndRelease( final_job );
 
-      while (!gDone) {
-         ThreadYield(); 
+      // now I can dispatch myself [if I do it first, it has no dependancies and will immediately run]
+      JobDispatch( final_job );
+
+      // wait for it to finish
+      JobWaitAndRelease( final_job );
+
+      // And after this is done, I should KNOW the count is 1000 [1001 jobs ran]
+      if (count != 1000) {
+         __debugbreak();
       }
-
-      count = count;
    }
 
    JobSystemShutdown();
@@ -239,3 +436,4 @@ void JobSystemTest()
 /* UNIT TESTS                                                           */
 /*                                                                      */
 /************************************************************************/
+
