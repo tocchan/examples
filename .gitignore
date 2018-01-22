@@ -38,3 +38,4 @@ window/displays/x64/
 x64/
 d3d11/setup/Debug/
 Debug/
+.vs/
